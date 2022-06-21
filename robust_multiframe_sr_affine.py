@@ -38,6 +38,7 @@ def get_frames_from_vid4(foldername:str,r,num_frame:int):
             frames_LR.append(cv2.resize(frame,(0,0),fx=1/r,fy=1/r))
     return np.stack(frames_HR),np.stack(frames_LR)
 
+glb_k = 0
 def Gk(X:np.ndarray,Yk:np.ndarray,mv:np.ndarray,H_ker:np.ndarray,r:int):
     '''
     The gradient of Lp error.
@@ -49,12 +50,12 @@ def Gk(X:np.ndarray,Yk:np.ndarray,mv:np.ndarray,H_ker:np.ndarray,r:int):
     '''
     size_HR = (X.shape[1],X.shape[0])
     # test
-    # global glb_k
-    # cv2.imwrite(f"test{glb_k}.jpg",cv2.warpAffine(X,mv,dsize=size_HR,flags=cv2.WARP_INVERSE_MAP))
-    # glb_k+=1
+    global glb_k
+    cv2.imwrite(f"test{glb_k}.jpg",cv2.warpAffine(X,mv,dsize=size_HR,flags=cv2.WARP_INVERSE_MAP))
+    glb_k+=1
     # end of test
 
-    down_X = convolve(cv2.warpAffine(X,mv,dsize=size_HR),H_ker)[::r,::r]
+    down_X = convolve(cv2.warpAffine(X,mv,dsize=size_HR,flags=cv2.WARP_INVERSE_MAP),H_ker)[::r,::r]
     upper_diff = np.zeros_like(X)
     upper_diff[::r,::r] = 2 * (down_X - Yk > 0) - 1
     HT_ker = np.flip(np.flip(H_ker,axis=0),axis=1)
@@ -130,7 +131,7 @@ def gd(X_init,Y_seq,mvs_LR,lamda,P,alpha,beta,max_iter,r,verbose,ground_truth):
     beta : learning rate
     '''
     X = X_init.astype(np.float32)
-    mvs = np.c_[mvs_LR[:,:,:-1],mvs_LR[:,:,-1].reshape(-1,2,1) * r]
+    mvs = np.c_[mvs_LR[:,:,:-1],mvs_LR[:,:,-1].reshape(-1,2,1) * (r)] # 存疑
     weight = np.exp(-np.linalg.norm(mvs[:,:,-1],axis=1))
     weight = weight / np.sum(weight)
     grad = totalgrad(X,Y_seq,mvs,lamda,P,alpha,r)

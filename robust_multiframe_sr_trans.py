@@ -74,7 +74,7 @@ def totalgrad(X,Y_seq,mvs,lamda,P,alpha,r,w=None):
     P,alpha : parameter of BTV (see original paper)
     w : weights for each frame, equal to 1/len(Y_seq) if assigned None
     '''
-    # H_ker = np.array([[1,4,7,4,1],[4,16,26,16,4],[7,26,41,26,7],[4,16,26,16,4],[1,4,7,4,1]]) / 273
+    #H_ker = np.array([[1,4,7,4,1],[4,16,26,16,4],[7,26,41,26,7],[4,16,26,16,4],[1,4,7,4,1]]) / 273
     if w is None:
         w = np.full((len(Y_seq),),1/len(Y_seq))
     H_ker = np.array([[1,1,1],[1,1,1],[1,1,1]]) / 9
@@ -111,25 +111,28 @@ def gd(X_init,Y_seq,mvs_LR,lamda,P,alpha,beta,max_iter,r,verbose,ground_truth):
     X = X_init.astype(np.float32)
     mvs = mvs_LR * r
     grad = totalgrad(X,Y_seq,mvs,lamda,P,alpha,r)
+    psnr_record = []
     for iter in range(max_iter):
         X = X - beta * grad
-        #grad = totalgrad(X,Y_seq,mvs,lamda,P,alpha,r)
         grad = totalgrad(X,Y_seq,mvs,lamda,P,alpha,r)
         if verbose:
             X_as_pic = np.clip(X,0,255).astype(np.uint8)
-            print(f"{iter}-th iteration : psnr = {psnr(ground_truth,X_as_pic,255)}")
-
+            psnr_ = psnr(ground_truth,X_as_pic,255)
+            psnr_record.append(psnr_)
+            print(f"{iter}-th iteration : psnr = {psnr_}")
+    plt.plot(range(len(psnr_record)),psnr_record)
+    plt.show()
     return np.clip(X,0,255).astype(np.uint8)
 
 def img_test():
     r = 2
-    Y_seq_HR, frames = get_frames_from_vid4("calendar",r=r,num_frame = 5)
+    Y_seq_HR, frames = get_frames_from_vid4("calendar",r=r,num_frame = 4)
     cv2.imwrite("gt.jpg",Y_seq_HR[0])
     mvs = mv_estim(frames)
     X_init = cv2.resize(src=frames[0],dsize=(0,0),fx=r,fy=r)
     cv2.imwrite("resize.jpg",X_init)
     cv2.imwrite("resize_cubic.jpg",cv2.resize(src=frames[0],dsize=(0,0),fx=r,fy=r,interpolation=cv2.INTER_CUBIC))
-    X = gd(X_init,frames,mvs,lamda=0.09,P=1,alpha=0.5,beta=5,max_iter=20,r=r,verbose=True,ground_truth=Y_seq_HR[0])
+    X = gd(X_init,frames,mvs,lamda=0.09,P=1,alpha=0.6,beta=5,max_iter=15,r=r,verbose=True,ground_truth=Y_seq_HR[0])
     cv2.imwrite("out.jpg",X)
     print(psnr(Y_seq_HR[0],X,255))
     print(psnr(Y_seq_HR[0],X_init,255))
